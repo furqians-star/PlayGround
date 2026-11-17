@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anarchy Chess — No Rules</title>
+<style>
+  :root {
+    --light: #f0d9b5;
+    --dark: #b58863;
+    --sel: #8ec944;
+    --bg: #262421;
+    --panel: #3d3a36;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: #eee;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+  }
+  h1 { font-size: 28px; margin-bottom: 4px; letter-spacing: 1px; }
+  .subtitle { color: #aaa; font-size: 14px; margin-bottom: 18px; font-style: italic; }
+  .layout {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .board-wrap { position: relative; }
+  .board {
+    display: grid;
+    grid-template-columns: repeat(8, 64px);
+    grid-template-rows: repeat(8, 64px);
+    border: 6px solid #4a423a;
+    border-radius: 4px;
+    box-shadow: 0 12px 40px rgba(0,0,0,.55);
+    user-select: none;
+    touch-action: manipulation;
+  }
+  .square {
+    width: 64px; height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    cursor: pointer;
+  }
+  .square.light { background: var(--light); }
+  .square.dark  { background: var(--dark); }
+  .square.lastmove::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: rgba(255, 213, 79, .45);
+    pointer-events: none;
+  }
+  .square.selected::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: rgba(142, 201, 68, .6);
+    pointer-events: none;
+  }
+  .piece {
+    font-size: 50px;
+    line-height: 1;
+    z-index: 1;
+    pointer-events: none;
+    transition: transform .12s ease;
+  }
+  .piece.w {
+    color: #fff;
+    text-shadow: 0 0 2px #000, 1px 1px 2px rgba(0,0,0,.55), -1px -1px 2px rgba(0,0,0,.35);
+  }
+  .piece.b {
+    color: #1c1c1c;
+    text-shadow: 0 0 2px #aaa, 1px 1px 2px rgba(255,255,255,.25);
+  }
+  .square:hover .piece { transform: scale(1.1); }
+  .droptarget::after {
+    content: "";
+    position: absolute;
+    inset: 6px;
+    border: 3px dashed #fff;
+    border-radius: 4px;
+    pointer-events: none;
+  }
+  .side {
+    width: 250px;
+    background: var(--panel);
+    border-radius: 10px;
+    padding: 18px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.4);
+  }
+  .side h2 { font-size: 16px; margin-bottom: 10px; color: #ddd; }
+  .btn {
+    display: block;
+    width: 100%;
+    margin: 8px 0;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 6px;
+    background: #7fa650;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn:hover { background: #8fb95e; }
+  .btn.secondary { background: #5a5651; }
+  .btn.secondary:hover { background: #6a6660; }
+  .palette {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .palette button {
+    background: #55524d;
+    border: none;
+    border-radius: 5px;
+    color: #fff;
+    font-size: 24px;
+    padding: 4px 0;
+    cursor: pointer;
+  }
+  .palette button:hover { background: #7a766f; }
+  .palette button.active { background: #7fa650; outline: 2px solid #b7dd8a; }
+  .palette-label { font-size: 12px; color: #999; margin: 10px 0 4px; }
+  #log {
+    margin-top: 12px;
+    font-size: 13px;
+    color: #bbb;
+    max-height: 180px;
+    overflow-y: auto;
+    border-top: 1px solid #555;
+    padding-top: 8px;
+    line-height: 1.6;
+  }
+  .coord {
+    position: absolute;
+    font-size: 10px;
+    font-weight: bold;
+    opacity: .5;
+    pointer-events: none;
+  }
+  .coord.file { bottom: 2px; right: 4px; }
+  .coord.rank { top: 2px; left: 4px; }
+  .dark .coord { color: #5d4633; }
+  .light .coord { color: #8a6a4b; }
+</style>
+</head>
+<body>
+  <h1>♞ Anarchy Chess</h1>
+  <div class="subtitle">No rules. Any piece, any square, any time. Chaos is legal here.</div>
+
+  <div class="layout">
+    <div class="board-wrap"><div class="board" id="board"></div></div>
+
+    <div class="side">
+      <h2>Controls</h2>
+      <button class="btn" id="resetBtn">↺ Reset board</button>
+      <button class="btn secondary" id="undoBtn">↶ Undo move</button>
+      <button class="btn secondary" id="flipBtn">⇅ Flip board</button>
+      <button class="btn secondary" id="clearBtn">🗑 Clear board</button>
+
+      <div class="palette-label">Click a token, then a square to place it (paint mode):</div>
+      <div class="palette" id="palette"></div>
+
+      <div id="log"></div>
+    </div>
+  </div>
+
+<script>
+const GLYPHS = {
+  wk: "♔", wq: "♕", wr: "♖", wb: "♗", wn: "♘", wp: "♙",
+  bk: "♚", bq: "♛", br: "♜", bb: "♝", bn: "♞", bp: "♟",
+};
+
+const START = [
+  ["br","bn","bb","bq","bk","bb","bn","br"],
+  ["bp","bp","bp","bp","bp","bp","bp","bp"],
+  [null,null,null,null,null,null,null,null],
+  [null,null,null,null,null,null,null,null],
+  [null,null,null,null,null,null,null,null],
+  [null,null,null,null,null,null,null,null],
+  ["wp","wp","wp","wp","wp","wp","wp","wp"],
+  ["wr","wn","wb","wq","wk","wb","wn","wr"],
+];
+
+let grid = START.map(r => r.slice());
+let selected = null;      // {r,c}
+let lastMove = null;      // {from, to}
+let flipped = false;
+let history = [];
+let paintPiece = null;    // palette piece id, or null
+const boardEl = document.getElementById("board");
+const logEl = document.getElementById("log");
+
+function view(r, c) { // map display index -> board index (handles flip)
+  return flipped ? { r: 7 - r, c: 7 - c } : { r, c };
+}
+
+function buildBoard() {
+  boardEl.innerHTML = "";
+  for (let vr = 0; vr < 8; vr++) {
+    for (let vc = 0; vc < 8; vc++) {
+      const { r, c } = view(vr, vc);
+      const sq = document.createElement("div");
+      sq.className = "square " + (((r + c) % 2 === 0) ? "light" : "dark");
+      sq.dataset.r = r; sq.dataset.c = c;
+      if (vr === 7) {
+        const f = document.createElement("span");
+        f.className = "coord file";
+        f.textContent = "abcdefgh"[c];
+        sq.appendChild(f);
+      }
+      if (vc === 0) {
+        const rk = document.createElement("span");
+        rk.className = "coord rank";
+        rk.textContent = 8 - r;
+        sq.appendChild(rk);
+      }
+      sq.addEventListener("click", () => onSquare(r, c));
+      sq.addEventListener("dragover", e => e.preventDefault());
+      sq.addEventListener("drop", e => {
+        e.preventDefault();
+        onSquare(r, c);
+      });
+      boardEl.appendChild(sq);
+    }
+  }
+}
+
+function render() {
+  for (let vr = 0; vr < 8; vr++) {
+    for (let vc = 0; vc < 8; vc++) {
+      const { r, c } = view(vr, vc);
+      const sq = boardEl.children[vr * 8 + vc];
+      // clear old piece / marks (keep coords)
+      sq.querySelectorAll(".piece").forEach(p => p.remove());
+      sq.classList.remove("selected", "lastmove");
+      const id = grid[r][c];
+      if (id) {
+        const p = document.createElement("span");
+        p.className = "piece " + id[0];
+        p.textContent = GLYPHS[id];
+        p.draggable = true;
+        sq.appendChild(p);
+      }
+      if (selected && selected.r === r && selected.c === c) sq.classList.add("selected");
+      if (lastMove && ((lastMove.from.r === r && lastMove.from.c === c) ||
+                       (lastMove.to.r === r && lastMove.to.c === c))) {
+        sq.classList.add("lastmove");
+      }
+    }
+  }
+}
+
+function snapshot() {
+  return { grid: grid.map(row => row.slice()), lastMove: lastMove ? JSON.parse(JSON.stringify(lastMove)) : null };
+}
+
+function onSquare(r, c) {
+  if (paintPiece) {
+    // Paint mode: place / remove / replace freely
+    history.push(snapshot());
+    grid[r][c] = (grid[r][c] === paintPiece) ? null : paintPiece;
+    log(`Placed ${name(paintPiece)} on ${sq(r, c)} — free of charge.`);
+    render();
+    return;
+  }
+  if (selected) {
+    history.push(snapshot());
+    const from = selected;
+    const captured = grid[r][c];
+    grid[r][c] = grid[from.r][from.c];
+    grid[from.r][from.c] = null;
+    lastMove = { from, to: { r, c } };
+    selected = null;
+    if (captured) log(`${name(grid[r][c])} teleported to ${sq(r,c)} and vaporized the ${name(captured)} there. Totally allowed.`);
+    else log(`${name(grid[r][c])} moved ${sq(from.r,from.c)} → ${sq(r,c)}. Nobody objected.`);
+    render();
+    return;
+  }
+  if (grid[r][c]) {
+    selected = { r, c };
+  }
+  render();
+}
+
+function sq(r, c) { return "abcdefgh"[c] + (8 - r); }
+
+function name(id) {
+  const color = id[0] === "w" ? "White" : "Black";
+  const kind = { k: "King", q: "Queen", r: "Rook", b: "Bishop", n: "Knight", p: "Pawn" }[id[1]];
+  return color + " " + kind;
+}
+
+function log(msg) {
+  const d = document.createElement("div");
+  d.textContent = msg;
+  logEl.prepend(d);
+  while (logEl.children.length > 60) logEl.lastChild.remove();
+}
+
+function reset() {
+  grid = START.map(r => r.slice());
+  selected = null; lastMove = null; history = [];
+  logEl.innerHTML = "";
+  log("Fresh board. The rules are not invited.");
+  render();
+}
+
+document.getElementById("resetBtn").addEventListener("click", reset);
+document.getElementById("undoBtn").addEventListener("click", () => {
+  const s = history.pop();
+  if (!s) { log("Nothing to undo. Time only flows one way. (Actually that's a rule too, ignore it.)"); return; }
+  grid = s.grid; lastMove = s.lastMove; selected = null;
+  log("Undone. The past is negotiable.");
+  render();
+});
+document.getElementById("flipBtn").addEventListener("click", () => {
+  flipped = !flipped;
+  buildBoard();
+  render();
+});
+document.getElementById("clearBtn").addEventListener("click", () => {
+  history.push(snapshot());
+  grid = Array.from({ length: 8 }, () => Array(8).fill(null));
+  selected = null; lastMove = null;
+  log("Board cleared. A blank canvas for your crimes.");
+  render();
+});
+
+// Palette (paint mode)
+const paletteEl = document.getElementById("palette");
+const PALETTE_IDS = ["wk","wq","wr","wb","wn","wp","bk","bq","br","bb","bn","bp"];
+PALETTE_IDS.forEach(id => {
+  const b = document.createElement("button");
+  b.textContent = GLYPHS[id];
+  b.title = name(id);
+  b.addEventListener("click", () => {
+    if (paintPiece === id) { paintPiece = null; selected = null; }
+    else { paintPiece = id; selected = null; }
+    paletteEl.querySelectorAll("button").forEach(x => x.classList.remove("active"));
+    if (paintPiece) b.classList.add("active");
+    log(paintPiece ? `Paint mode: ${name(id)}. Click squares to stamp pieces (click again on palette to stop).`
+                   : "Paint mode off.");
+  });
+  paletteEl.appendChild(b);
+});
+
+buildBoard();
+reset();
+</script>
+</body>
+</html>
