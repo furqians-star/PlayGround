@@ -3,14 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Anarchy Chess — No Rules</title>
+<title>GAMBonanza — Armed Chess, No Rules</title>
 <style>
   :root {
     --light: #f0d9b5;
     --dark: #b58863;
-    --sel: #8ec944;
     --bg: #262421;
     --panel: #3d3a36;
+    --fire: #d95f2b;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -23,7 +23,8 @@
     align-items: center;
     padding: 24px 16px;
   }
-  h1 { font-size: 28px; margin-bottom: 4px; letter-spacing: 1px; }
+  h1 { font-size: 30px; margin-bottom: 4px; letter-spacing: 2px; }
+  h1 .boom { color: var(--fire); }
   .subtitle { color: #aaa; font-size: 14px; margin-bottom: 18px; font-style: italic; }
   .layout {
     display: flex;
@@ -32,7 +33,6 @@
     flex-wrap: wrap;
     justify-content: center;
   }
-  .board-wrap { position: relative; }
   .board {
     display: grid;
     grid-template-columns: repeat(8, 64px);
@@ -41,7 +41,6 @@
     border-radius: 4px;
     box-shadow: 0 12px 40px rgba(0,0,0,.55);
     user-select: none;
-    touch-action: manipulation;
   }
   .square {
     width: 64px; height: 64px;
@@ -65,13 +64,26 @@
     background: rgba(142, 201, 68, .6);
     pointer-events: none;
   }
+  .square.target-kill::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: rgba(217, 60, 43, .5);
+    pointer-events: none;
+  }
+  .square.target-good::before {
+    content: "";
+    position: absolute; inset: 0;
+    background: rgba(80, 170, 240, .5);
+    pointer-events: none;
+  }
   .piece {
-    font-size: 50px;
+    font-size: 48px;
     line-height: 1;
     z-index: 1;
     pointer-events: none;
     transition: transform .12s ease;
   }
+  .square:hover .piece { transform: scale(1.12); }
   .piece.w {
     color: #fff;
     text-shadow: 0 0 2px #000, 1px 1px 2px rgba(0,0,0,.55), -1px -1px 2px rgba(0,0,0,.35);
@@ -80,66 +92,82 @@
     color: #1c1c1c;
     text-shadow: 0 0 2px #aaa, 1px 1px 2px rgba(255,255,255,.25);
   }
-  .square:hover .piece { transform: scale(1.1); }
-  .droptarget::after {
-    content: "";
+  .cd-badge {
     position: absolute;
-    inset: 6px;
-    border: 3px dashed #fff;
-    border-radius: 4px;
+    bottom: 2px; right: 3px;
+    z-index: 2;
+    background: var(--fire);
+    color: #fff;
+    font-size: 10px;
+    font-weight: bold;
+    border-radius: 50%;
+    width: 16px; height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     pointer-events: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,.5);
+  }
+  .flash {
+    position: absolute; inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    animation: flash .35s ease-out forwards;
+  }
+  @keyframes flash {
+    0% { box-shadow: inset 0 0 0 0 rgba(255,120,40,.9); opacity: 1; }
+    100% { box-shadow: inset 0 0 30px 8px rgba(255,120,40,.0); opacity: 0; }
   }
   .side {
-    width: 250px;
+    width: 270px;
     background: var(--panel);
     border-radius: 10px;
-    padding: 18px;
+    padding: 16px;
     box-shadow: 0 8px 30px rgba(0,0,0,.4);
   }
-  .side h2 { font-size: 16px; margin-bottom: 10px; color: #ddd; }
+  .side h2 { font-size: 15px; margin-bottom: 8px; color: #ddd; }
   .btn {
     display: block;
     width: 100%;
-    margin: 8px 0;
-    padding: 10px 12px;
+    margin: 6px 0;
+    padding: 9px 12px;
     border: none;
     border-radius: 6px;
     background: #7fa650;
     color: #fff;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     cursor: pointer;
   }
   .btn:hover { background: #8fb95e; }
   .btn.secondary { background: #5a5651; }
   .btn.secondary:hover { background: #6a6660; }
-  .palette {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 4px;
-    margin-top: 6px;
-  }
-  .palette button {
-    background: #55524d;
-    border: none;
-    border-radius: 5px;
-    color: #fff;
-    font-size: 24px;
-    padding: 4px 0;
-    cursor: pointer;
-  }
-  .palette button:hover { background: #7a766f; }
-  .palette button.active { background: #7fa650; outline: 2px solid #b7dd8a; }
-  .palette-label { font-size: 12px; color: #999; margin: 10px 0 4px; }
-  #log {
-    margin-top: 12px;
+  .btn.fire { background: var(--fire); }
+  .btn.fire:hover { background: #e8703f; }
+  .btn.fire:disabled { background: #6b5a4e; color: #bbb; cursor: not-allowed; }
+  .btn.armed { background: #a83226; outline: 2px solid #ff9d8a; }
+  #abilityCard {
+    background: #2f2d2a;
+    border: 1px solid #555;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    min-height: 96px;
     font-size: 13px;
+  }
+  #abilityCard .pname { font-size: 15px; font-weight: bold; margin-bottom: 2px; }
+  #abilityCard .aname { color: #ffb46b; font-weight: 600; }
+  #abilityCard .cd { color: #999; font-size: 12px; margin-top: 4px; }
+  #abilityCard .hint { color: #8ec944; font-size: 12px; margin-top: 6px; }
+  #log {
+    margin-top: 10px;
+    font-size: 12.5px;
     color: #bbb;
-    max-height: 180px;
+    max-height: 170px;
     overflow-y: auto;
     border-top: 1px solid #555;
     padding-top: 8px;
-    line-height: 1.6;
+    line-height: 1.55;
   }
   .coord {
     position: absolute;
@@ -155,151 +183,373 @@
 </style>
 </head>
 <body>
-  <h1>♞ Anarchy Chess</h1>
-  <div class="subtitle">No rules. Any piece, any square, any time. Chaos is legal here.</div>
+  <h1>♟ GAM<span class="boom">BONANZA</span></h1>
+  <div class="subtitle">Chess with no rules — and someone left the armory door open.</div>
 
   <div class="layout">
-    <div class="board-wrap"><div class="board" id="board"></div></div>
+    <div class="board" id="board"></div>
 
     <div class="side">
-      <h2>Controls</h2>
-      <button class="btn" id="resetBtn">↺ Reset board</button>
-      <button class="btn secondary" id="undoBtn">↶ Undo move</button>
-      <button class="btn secondary" id="flipBtn">⇅ Flip board</button>
-      <button class="btn secondary" id="clearBtn">🗑 Clear board</button>
+      <div id="abilityCard">
+        <div style="color:#888">Click a piece to inspect it.<br>Every piece carries hardware.</div>
+      </div>
+      <button class="btn fire" id="powerBtn" disabled>🔥 Use power</button>
 
-      <div class="palette-label">Click a token, then a square to place it (paint mode):</div>
-      <div class="palette" id="palette"></div>
+      <h2 style="margin-top:10px">Controls</h2>
+      <button class="btn secondary" id="undoBtn">↶ Undo</button>
+      <button class="btn secondary" id="resetBtn">↺ Reset arsenal</button>
+      <button class="btn secondary" id="flipBtn">⇅ Flip board</button>
+      <button class="btn secondary" id="muteBtn">🔊 Sound: on</button>
 
       <div id="log"></div>
     </div>
   </div>
 
 <script>
-const GLYPHS = {
-  wk: "♔", wq: "♕", wr: "♖", wb: "♗", wn: "♘", wp: "♙",
-  bk: "♚", bq: "♛", br: "♜", bb: "♝", bn: "♞", bp: "♟",
+// ---------- data ----------
+const GLYPH = { k:"♚", q:"♛", r:"♜", b:"♝", n:"♞", p:"♟" };
+const NAME  = { k:"King", q:"Queen", r:"Rook", b:"Bishop", n:"Knight", p:"Pawn" };
+
+const ABILITY = {
+  p: { name:"Shotgun",      cd:2, desc:"Fire up to 3 squares straight ahead. First thing down the barrel dies." },
+  r: { name:"Cannon",       cd:3, desc:"Fire down any row or column, any distance. First thing hit is obliterated." },
+  b: { name:"Conversion Ray", cd:3, desc:"Zap along a diagonal. The first piece hit switches to YOUR side." },
+  n: { name:"Mortar",       cd:2, desc:"Shell any of the 8 L-shaped landing squares. Whatever's there dies." },
+  q: { name:"Nuke",         cd:4, desc:"Detonate: every piece on all 8 adjacent squares dies. Friend or foe. Especially foe." },
+  k: { name:"Royal Swap",   cd:3, desc:"Teleport-swap with any friendly piece anywhere. Cowardice, weaponized." },
 };
 
-const START = [
-  ["br","bn","bb","bq","bk","bb","bn","br"],
-  ["bp","bp","bp","bp","bp","bp","bp","bp"],
-  [null,null,null,null,null,null,null,null],
-  [null,null,null,null,null,null,null,null],
-  [null,null,null,null,null,null,null,null],
-  [null,null,null,null,null,null,null,null],
-  ["wp","wp","wp","wp","wp","wp","wp","wp"],
-  ["wr","wn","wb","wq","wk","wb","wn","wr"],
-];
-
-let grid = START.map(r => r.slice());
-let selected = null;      // {r,c}
-let lastMove = null;      // {from, to}
-let flipped = false;
-let history = [];
-let paintPiece = null;    // palette piece id, or null
-const boardEl = document.getElementById("board");
-const logEl = document.getElementById("log");
-
-function view(r, c) { // map display index -> board index (handles flip)
-  return flipped ? { r: 7 - r, c: 7 - c } : { r, c };
+function P(t, c) { return { t, c, cd:0 }; }
+function START() {
+  const g = Array.from({ length: 8 }, () => Array(8).fill(null));
+  const back = ["r","n","b","q","k","b","n","r"];
+  for (let c = 0; c < 8; c++) {
+    g[0][c] = P(back[c], "b");
+    g[1][c] = P("p", "b");
+    g[6][c] = P("p", "w");
+    g[7][c] = P(back[c], "w");
+  }
+  return g;
 }
 
+let grid = START();
+let selected = null;       // {r,c}
+let armed = null;          // {r,c} of piece ready to fire
+let lastMove = null;
+let flipped = false;
+let muted = false;
+let history = [];
+
+const boardEl = document.getElementById("board");
+const cardEl  = document.getElementById("abilityCard");
+const powerBtn = document.getElementById("powerBtn");
+const logEl = document.getElementById("log");
+
+// ---------- helpers ----------
+const sqName = (r, c) => "abcdefgh"[c] + (8 - r);
+const view = (r, c) => flipped ? { r: 7 - r, c: 7 - c } : { r, c };
+const fullName = p => (p.c === "w" ? "White " : "Black ") + NAME[p.t];
+const IN = (r, c) => r >= 0 && r < 8 && c >= 0 && c < 8;
+const DIRS = [[-1,0],[1,0],[0,-1],[0,1]];
+const DIAGS = [[-1,-1],[-1,1],[1,-1],[1,1]];
+const LMOVES = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+
+// squares a piece's power can target
+function powerTargets(p, r, c) {
+  const set = new Set();
+  const add = (rr, cc) => { if (IN(rr, cc)) set.add(rr * 8 + cc); };
+  const fwd = p.c === "w" ? -1 : 1;
+  if (p.t === "p") for (let i = 1; i <= 3; i++) add(r + fwd * i, c);
+  if (p.t === "r") for (const [dr, dc] of DIRS) for (let i = 1; i < 8; i++) add(r + dr * i, c + dc * i);
+  if (p.t === "b") for (const [dr, dc] of DIAGS) for (let i = 1; i < 8; i++) add(r + dr * i, c + dc * i);
+  if (p.t === "n") for (const [dr, dc] of LMOVES) add(r + dr, c + dc);
+  if (p.t === "k") for (let rr = 0; rr < 8; rr++) for (let cc = 0; cc < 8; cc++)
+    if (grid[rr][cc] && grid[rr][cc].c === p.c && !(rr === r && cc === c)) add(rr, cc);
+  return set;
+}
+
+// walk from (r,c) toward (tr,tc); return first occupied square or null
+function firstHit(r, c, tr, tc) {
+  const dr = Math.sign(tr - r), dc = Math.sign(tc - c);
+  let rr = r + dr, cc = c + dc;
+  while (IN(rr, cc)) {
+    if (grid[rr][cc]) return { r: rr, c: cc };
+    if (rr === tr && cc === tc) break;
+    rr += dr; cc += dc;
+  }
+  return null;
+}
+
+// ---------- sound ----------
+let actx = null;
+function beep(type) {
+  if (muted) return;
+  try {
+    actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+    const t = actx.currentTime;
+    const g = actx.createGain();
+    g.connect(actx.destination);
+    if (type === "shot") {
+      const o = actx.createOscillator();
+      o.type = "square"; o.frequency.setValueAtTime(900, t);
+      o.frequency.exponentialRampToValueAtTime(120, t + .12);
+      g.gain.setValueAtTime(.08, t); g.gain.exponentialRampToValueAtTime(.001, t + .15);
+      o.connect(g); o.start(t); o.stop(t + .16);
+    } else if (type === "boom") {
+      const o = actx.createOscillator();
+      o.type = "sawtooth"; o.frequency.setValueAtTime(90, t);
+      o.frequency.exponentialRampToValueAtTime(30, t + .4);
+      g.gain.setValueAtTime(.18, t); g.gain.exponentialRampToValueAtTime(.001, t + .45);
+      o.connect(g); o.start(t); o.stop(t + .5);
+    } else if (type === "zap") {
+      const o = actx.createOscillator();
+      o.type = "triangle"; o.frequency.setValueAtTime(300, t);
+      o.frequency.linearRampToValueAtTime(1400, t + .18);
+      g.gain.setValueAtTime(.07, t); g.gain.exponentialRampToValueAtTime(.001, t + .2);
+      o.connect(g); o.start(t); o.stop(t + .22);
+    } else { // blip
+      const o = actx.createOscillator();
+      o.type = "sine"; o.frequency.setValueAtTime(600, t);
+      o.frequency.setValueAtTime(900, t + .07);
+      g.gain.setValueAtTime(.06, t); g.gain.exponentialRampToValueAtTime(.001, t + .14);
+      o.connect(g); o.start(t); o.stop(t + .15);
+    }
+  } catch (e) { /* silence is acceptable */ }
+}
+
+// ---------- render ----------
 function buildBoard() {
   boardEl.innerHTML = "";
   for (let vr = 0; vr < 8; vr++) {
     for (let vc = 0; vc < 8; vc++) {
       const { r, c } = view(vr, vc);
-      const sq = document.createElement("div");
-      sq.className = "square " + (((r + c) % 2 === 0) ? "light" : "dark");
-      sq.dataset.r = r; sq.dataset.c = c;
-      if (vr === 7) {
-        const f = document.createElement("span");
-        f.className = "coord file";
-        f.textContent = "abcdefgh"[c];
-        sq.appendChild(f);
-      }
-      if (vc === 0) {
-        const rk = document.createElement("span");
-        rk.className = "coord rank";
-        rk.textContent = 8 - r;
-        sq.appendChild(rk);
-      }
-      sq.addEventListener("click", () => onSquare(r, c));
-      sq.addEventListener("dragover", e => e.preventDefault());
-      sq.addEventListener("drop", e => {
-        e.preventDefault();
-        onSquare(r, c);
-      });
-      boardEl.appendChild(sq);
+      const el = document.createElement("div");
+      el.className = "square " + (((r + c) % 2 === 0) ? "light" : "dark");
+      if (vr === 7) { const f = document.createElement("span"); f.className = "coord file"; f.textContent = "abcdefgh"[c]; el.appendChild(f); }
+      if (vc === 0) { const k = document.createElement("span"); k.className = "coord rank"; k.textContent = 8 - r; el.appendChild(k); }
+      el.addEventListener("click", () => onSquare(r, c));
+      boardEl.appendChild(el);
     }
   }
 }
 
 function render() {
+  const tgt = armed ? powerTargets(grid[armed.r][armed.c], armed.r, armed.c) : null;
   for (let vr = 0; vr < 8; vr++) {
     for (let vc = 0; vc < 8; vc++) {
       const { r, c } = view(vr, vc);
-      const sq = boardEl.children[vr * 8 + vc];
-      // clear old piece / marks (keep coords)
-      sq.querySelectorAll(".piece").forEach(p => p.remove());
-      sq.classList.remove("selected", "lastmove");
-      const id = grid[r][c];
-      if (id) {
-        const p = document.createElement("span");
-        p.className = "piece " + id[0];
-        p.textContent = GLYPHS[id];
-        p.draggable = true;
-        sq.appendChild(p);
+      const el = boardEl.children[vr * 8 + vc];
+      el.querySelectorAll(".piece,.cd-badge").forEach(x => x.remove());
+      el.classList.remove("selected", "lastmove", "target-kill", "target-good");
+      const p = grid[r][c];
+      if (p) {
+        const s = document.createElement("span");
+        s.className = "piece " + p.c;
+        s.textContent = GLYPH[p.t];
+        el.appendChild(s);
+        if (p.cd > 0) {
+          const b = document.createElement("span");
+          b.className = "cd-badge";
+          b.textContent = p.cd;
+          el.appendChild(b);
+        }
       }
-      if (selected && selected.r === r && selected.c === c) sq.classList.add("selected");
-      if (lastMove && ((lastMove.from.r === r && lastMove.from.c === c) ||
-                       (lastMove.to.r === r && lastMove.to.c === c))) {
-        sq.classList.add("lastmove");
+      if (selected && selected.r === r && selected.c === c) el.classList.add("selected");
+      if (lastMove && ((lastMove.from.r === r && lastMove.from.c === c) || (lastMove.to.r === r && lastMove.to.c === c)))
+        el.classList.add("lastmove");
+      if (tgt && tgt.has(r * 8 + c)) {
+        const victim = grid[r][c];
+        el.classList.add(victim ? "target-kill" : "target-good");
       }
     }
   }
+  updateCard();
 }
 
+function updateCard() {
+  const s = selected && grid[selected.r][selected.c] ? selected : (armed || null);
+  if (!s) {
+    cardEl.innerHTML = `<div style="color:#888">Click a piece to inspect it.<br>Every piece carries hardware.</div>`;
+    powerBtn.disabled = true;
+    powerBtn.textContent = "🔥 Use power";
+    powerBtn.classList.remove("armed");
+    return;
+  }
+  const p = grid[s.r][s.c];
+  const a = ABILITY[p.t];
+  const ready = p.cd === 0;
+  const isArmed = armed && armed.r === s.r && armed.c === s.c;
+  cardEl.innerHTML = `
+    <div class="pname">${p.c === "w" ? "⚪" : "⚫"} ${fullName(p)} <span style="opacity:.6">@ ${sqName(s.r, s.c)}</span></div>
+    <div class="aname">${a.name}</div>
+    <div>${a.desc}</div>
+    <div class="cd">${ready ? "✅ Ready to fire" : `🕐 Reloading — ready in ${p.cd}`}</div>
+    ${isArmed ? `<div class="hint">🎯 ARMED — click a red/blue square. Click the button again to stand down.</div>` : ""}`;
+  powerBtn.disabled = !ready;
+  powerBtn.textContent = isArmed ? "✋ Stand down" : `🔥 ${a.name}`;
+  powerBtn.classList.toggle("armed", !!isArmed);
+}
+
+// ---------- actions ----------
 function snapshot() {
-  return { grid: grid.map(row => row.slice()), lastMove: lastMove ? JSON.parse(JSON.stringify(lastMove)) : null };
+  return {
+    grid: grid.map(row => row.map(p => p ? { ...p } : null)),
+    lastMove: lastMove ? JSON.parse(JSON.stringify(lastMove)) : null,
+  };
 }
 
-function onSquare(r, c) {
-  if (paintPiece) {
-    // Paint mode: place / remove / replace freely
-    history.push(snapshot());
-    grid[r][c] = (grid[r][c] === paintPiece) ? null : paintPiece;
-    log(`Placed ${name(paintPiece)} on ${sq(r, c)} — free of charge.`);
-    render();
-    return;
-  }
-  if (selected) {
-    history.push(snapshot());
-    const from = selected;
-    const captured = grid[r][c];
-    grid[r][c] = grid[from.r][from.c];
-    grid[from.r][from.c] = null;
-    lastMove = { from, to: { r, c } };
-    selected = null;
-    if (captured) log(`${name(grid[r][c])} teleported to ${sq(r,c)} and vaporized the ${name(captured)} there. Totally allowed.`);
-    else log(`${name(grid[r][c])} moved ${sq(from.r,from.c)} → ${sq(r,c)}. Nobody objected.`);
-    render();
-    return;
-  }
-  if (grid[r][c]) {
-    selected = { r, c };
-  }
+function tickCooldowns() {
+  for (const row of grid) for (const p of row) if (p && p.cd > 0) p.cd--;
+}
+
+function kill(r, c, how) {
+  const victim = grid[r][c];
+  if (!victim) return null;
+  grid[r][c] = null;
+  log(`${fullName(victim)} at ${sqName(r, c)} ${how}`);
+  const el = boardEl.children[view(r, c).r * 8 + view(r, c).c];
+  if (el) { const f = document.createElement("div"); f.className = "flash"; el.appendChild(f); setTimeout(() => f.remove(), 400); }
+  beep(how.includes("converted") ? "zap" : "boom");
+  return victim;
+}
+
+function finishAction() {
+  selected = null; armed = null;
+  tickCooldowns();
   render();
 }
 
-function sq(r, c) { return "abcdefgh"[c] + (8 - r); }
-
-function name(id) {
-  const color = id[0] === "w" ? "White" : "Black";
-  const kind = { k: "King", q: "Queen", r: "Rook", b: "Bishop", n: "Knight", p: "Pawn" }[id[1]];
-  return color + " " + kind;
+function doMove(from, to) {
+  history.push(snapshot());
+  const p = grid[from.r][from.c];
+  const victim = grid[to.r][to.c];
+  grid[to.r][to.c] = p;
+  grid[from.r][from.c] = null;
+  lastMove = { from, to };
+  if (victim) log(`${fullName(p)} rammed into ${fullName(victim)} at ${sqName(to.r, to.c)}. The victim ceased. Nobody carded anybody.`);
+  else log(`${fullName(p)} strolled ${sqName(from.r, from.c)} → ${sqName(to.r, to.c)}. Perfectly legal, because nothing is.`);
+  beep("blip");
+  finishAction();
 }
+
+function firePower(r, c, target) {
+  history.push(snapshot());
+  const p = grid[r][c];
+  const a = ABILITY[p.t];
+  const fwd = p.c === "w" ? -1 : 1;
+
+  if (p.t === "p") {
+    const hit = firstHit(r, c, target.r, target.c);
+    if (hit) kill(hit.r, hit.c, `caught a face full of buckshot from the ${fullName(p)} at ${sqName(r, c)}.`);
+    else log(`${fullName(p)} fired at ${sqName(target.r, target.c)} and hit absolutely nothing. Ammo wasted with pride.`);
+    beep("shot");
+  } else if (p.t === "r") {
+    const hit = firstHit(r, c, target.r, target.c);
+    if (hit) kill(hit.r, hit.c, `was flattened by a cannonball from the ${fullName(p)} at ${sqName(r, c)}.`);
+    else log(`${fullName(p)}'s cannonball sailed off the board. Somewhere, a spectator ducked.`);
+    beep("shot");
+  } else if (p.t === "b") {
+    const hit = firstHit(r, c, target.r, target.c);
+    if (hit) {
+      const was = fullName(hit.r, hit.c ? grid[hit.r][hit.c] : null);
+      const victim = grid[hit.r][hit.c];
+      victim.c = p.c; victim.cd = 0;
+      log(`${fullName(victim)} at ${sqName(hit.r, hit.c)} saw the light of the Conversion Ray and now fights for ${p.c === "w" ? "White" : "Black"}!`);
+      beep("zap");
+    } else log(`${fullName(p)}'s ray zapped an empty square. The square remains unconvinced.`);
+  } else if (p.t === "n") {
+    if (grid[target.r][target.c]) kill(target.r, target.c, `was mortar-shelled by the ${fullName(p)} at ${sqName(r, c)}. The L stands for "lobbed".`);
+    else log(`${fullName(p)}'s mortar landed at ${sqName(target.r, target.c)} — nothing there but dirt and dreams.`);
+    beep("boom");
+  } else if (p.t === "q") {
+    let n = 0;
+    for (const [dr, dc] of [...DIRS, ...DIAGS]) {
+      const rr = r + dr, cc = c + dc;
+      if (IN(rr, cc) && grid[rr][cc]) { kill(rr, cc, `was vaporized in the ${fullName(p)}'s nuke.`); n++; }
+    }
+    log(n ? `BOOM. ${n} piece${n > 1 ? "s" : ""} deleted. Diplomacy has failed.` : `${fullName(p)} detonated magnificently... over an empty neighborhood.`);
+    beep("boom");
+  } else if (p.t === "k") {
+    const other = grid[target.r][target.c];
+    grid[target.r][target.c] = p;
+    grid[r][c] = other;
+    lastMove = { from: { r, c }, to: target };
+    log(`${fullName(p)} and ${fullName(other)} swapped places via Royal Swap. Confusing for everyone, especially them.`);
+    beep("blip");
+  }
+  p.cd = ABILITY[p.t].cd;
+  finishAction();
+}
+
+// ---------- interaction ----------
+function onSquare(r, c) {
+  const clicked = grid[r][c];
+
+  // firing a weapon
+  if (armed) {
+    const p = grid[armed.r][armed.c];
+    if (r === armed.r && c === armed.c) { armed = null; render(); return; } // stand down
+    const targets = powerTargets(p, armed.r, armed.c);
+    if (targets.has(r * 8 + c)) {
+      if (p.t === "k" && (!clicked || clicked.c === p.c)) { firePower(armed.r, armed.c, { r, c }); return; }
+      if (p.t !== "k") { firePower(armed.r, armed.c, { r, c }); return; }
+      log(`Royal Swap needs a FRIENDLY piece to swap with.`);
+      return;
+    }
+    log(`Out of ${ABILITY[p.t].name} range/shape. Disarming.`);
+    armed = null;
+    render();
+    return;
+  }
+
+  // selecting
+  if (selected) {
+    if (selected.r === r && selected.c === c) { selected = null; render(); return; }
+    doMove(selected, { r, c });
+    return;
+  }
+  if (clicked) { selected = { r, c }; render(); }
+}
+
+powerBtn.addEventListener("click", () => {
+  const s = armed || selected;
+  if (!s) return;
+  const p = grid[s.r][s.c];
+  if (p.cd > 0) return;
+  if (armed) { armed = null; render(); return; }
+  if (p.t === "q") { firePower(s.r, s.c, null); return; } // nuke needs no target
+  armed = { r: s.r, c: s.c };
+  log(`${fullName(p)} arms its ${ABILITY[p.t].name}. Click a highlighted square.`);
+  beep("blip");
+  render();
+});
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { armed = null; selected = null; render(); }
+});
+
+// ---------- controls ----------
+document.getElementById("undoBtn").addEventListener("click", () => {
+  const s = history.pop();
+  if (!s) { log("Nothing to undo. Even time travel needs ammo."); return; }
+  grid = s.grid; lastMove = s.lastMove; selected = null; armed = null;
+  log("Rewound. The casualties never existed.");
+  render();
+});
+document.getElementById("resetBtn").addEventListener("click", () => {
+  grid = START(); selected = armed = null; lastMove = null; history = [];
+  logEl.innerHTML = "";
+  log("Fresh start. The pawns reload eagerly.");
+  render();
+});
+document.getElementById("flipBtn").addEventListener("click", () => {
+  flipped = !flipped;
+  buildBoard(); render();
+});
+document.getElementById("muteBtn").addEventListener("click", e => {
+  muted = !muted;
+  e.target.textContent = muted ? "🔇 Sound: off" : "🔊 Sound: on";
+});
 
 function log(msg) {
   const d = document.createElement("div");
@@ -308,55 +558,10 @@ function log(msg) {
   while (logEl.children.length > 60) logEl.lastChild.remove();
 }
 
-function reset() {
-  grid = START.map(r => r.slice());
-  selected = null; lastMove = null; history = [];
-  logEl.innerHTML = "";
-  log("Fresh board. The rules are not invited.");
-  render();
-}
-
-document.getElementById("resetBtn").addEventListener("click", reset);
-document.getElementById("undoBtn").addEventListener("click", () => {
-  const s = history.pop();
-  if (!s) { log("Nothing to undo. Time only flows one way. (Actually that's a rule too, ignore it.)"); return; }
-  grid = s.grid; lastMove = s.lastMove; selected = null;
-  log("Undone. The past is negotiable.");
-  render();
-});
-document.getElementById("flipBtn").addEventListener("click", () => {
-  flipped = !flipped;
-  buildBoard();
-  render();
-});
-document.getElementById("clearBtn").addEventListener("click", () => {
-  history.push(snapshot());
-  grid = Array.from({ length: 8 }, () => Array(8).fill(null));
-  selected = null; lastMove = null;
-  log("Board cleared. A blank canvas for your crimes.");
-  render();
-});
-
-// Palette (paint mode)
-const paletteEl = document.getElementById("palette");
-const PALETTE_IDS = ["wk","wq","wr","wb","wn","wp","bk","bq","br","bb","bn","bp"];
-PALETTE_IDS.forEach(id => {
-  const b = document.createElement("button");
-  b.textContent = GLYPHS[id];
-  b.title = name(id);
-  b.addEventListener("click", () => {
-    if (paintPiece === id) { paintPiece = null; selected = null; }
-    else { paintPiece = id; selected = null; }
-    paletteEl.querySelectorAll("button").forEach(x => x.classList.remove("active"));
-    if (paintPiece) b.classList.add("active");
-    log(paintPiece ? `Paint mode: ${name(id)}. Click squares to stamp pieces (click again on palette to stop).`
-                   : "Paint mode off.");
-  });
-  paletteEl.appendChild(b);
-});
-
+// ---------- go ----------
 buildBoard();
-reset();
+log("Welcome to GAMBonanza. Movement has no rules; the guns do the talking.");
+render();
 </script>
 </body>
 </html>
